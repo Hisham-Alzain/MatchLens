@@ -20,6 +20,15 @@ The following features are implemented and stable:
 
 ---
 
+## Demo
+
+
+https://github.com/user-attachments/assets/847905c6-fdc8-44bc-81c9-412b3554de56
+
+
+
+---
+
 ## Why MatchLens?
 Football is a game of **space, movement, and timing** — and MatchLens is built to capture exactly that.  
 By converting raw video into **metric pitch data**, the system enables:
