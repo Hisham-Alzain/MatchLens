@@ -125,7 +125,7 @@ class Tracker:
         # )
 
         class_thresholds = np.array(
-            [0.10, 0.30, 0.60, 0.20], dtype=float
+            [0.20, 0.30, 0.80, 0.45], dtype=float
         )  # ball, goalkeeper, player, referee
         default_threshold = 0.25
 
@@ -216,55 +216,55 @@ class Tracker:
             if cls_name == "ball":
                 continue
 
-            stable_id = self.assign_stable_id(track_id, bbox, cls_name)
-            sure_cls = self.update_class(stable_id, cls_name)
-            cls_id = cls_names_inv[sure_cls]
+            # stable_id = self.assign_stable_id(track_id, bbox, cls_name)
+            # sure_cls = self.update_class(stable_id, cls_name)
+            # cls_id = cls_names_inv[sure_cls]
 
             if cls_id == cls_names_inv["player"]:
-                tracks["players"][stable_id] = {"bbox": bbox, "conf": conf}
+                tracks["players"][track_id] = {"bbox": bbox, "conf": conf}
             elif cls_id == cls_names_inv["referee"]:
-                tracks["referees"][stable_id] = {"bbox": bbox, "conf": conf}
+                tracks["referees"][track_id] = {"bbox": bbox, "conf": conf}
             elif cls_id == cls_names_inv["goalkeeper"]:
-                tracks["goalkeepers"][stable_id] = {"bbox": bbox, "conf": conf}
+                tracks["goalkeepers"][track_id] = {"bbox": bbox, "conf": conf}
             else:
                 pass
 
-        # # Ball (no tracker id)
-        # for det in detections:
-        #     x1, y1, x2, y2, conf, cls_id = det
-
-        #     if cls_id == cls_names_inv["ball"]:
-        #         tracks["ball"][1] = {"bbox": [x1, y1, x2, y2], "conf": conf}
-
-        # ---------------- BALL TRACKING ----------------
-        self.last_ball_w = getattr(self, "last_ball_w", 10)
-        self.last_ball_h = getattr(self, "last_ball_h", 10)
-
-        ball_dets = []
+        # Ball (no tracker id)
         for det in detections:
             x1, y1, x2, y2, conf, cls_id = det
+
             if cls_id == cls_names_inv["ball"]:
-                cx, cy = get_bbox_center((x1, y1, x2, y2))
-                ball_dets.append((cx, cy, [x1, y1, x2, y2], conf))
+                tracks["ball"][1] = {"bbox": [x1, y1, x2, y2], "conf": conf}
 
-        # highest confidence
-        if len(ball_dets) > 0:
-            cx, cy, bbox, conf = max(ball_dets, key=lambda x: x[3])
-            self.ball_kalman.update(cx, cy, conf)
-            self.last_ball_w = bbox[2] - bbox[0]
-            self.last_ball_h = bbox[3] - bbox[1]
-            tracks["ball"][1] = {"bbox": bbox, "conf": conf}
-        else:
-            # No detection → predict
-            px, py = self.ball_kalman.predict()
+        # # ---------------- BALL TRACKING ----------------
+        # self.last_ball_w = getattr(self, "last_ball_w", 10)
+        # self.last_ball_h = getattr(self, "last_ball_h", 10)
 
-            # Reconstruct bbox using last known size
-            half_w = self.last_ball_w / 2
-            half_h = self.last_ball_h / 2
-            tracks["ball"][1] = {
-                "bbox": [px - half_w, py - half_h, px + half_w, py + half_h],
-                "conf": None,  # This is a prediction
-            }
+        # ball_dets = []
+        # for det in detections:
+        #     x1, y1, x2, y2, conf, cls_id = det
+        #     if cls_id == cls_names_inv["ball"]:
+        #         cx, cy = get_bbox_center((x1, y1, x2, y2))
+        #         ball_dets.append((cx, cy, [x1, y1, x2, y2], conf))
+
+        # # highest confidence
+        # if len(ball_dets) > 0:
+        #     cx, cy, bbox, conf = max(ball_dets, key=lambda x: x[3])
+        #     self.ball_kalman.update(cx, cy, conf)
+        #     self.last_ball_w = bbox[2] - bbox[0]
+        #     self.last_ball_h = bbox[3] - bbox[1]
+        #     tracks["ball"][1] = {"bbox": bbox, "conf": conf}
+        # else:
+        #     # No detection → predict
+        #     px, py = self.ball_kalman.predict()
+
+        #     # Reconstruct bbox using last known size
+        #     half_w = self.last_ball_w / 2
+        #     half_h = self.last_ball_h / 2
+        #     tracks["ball"][1] = {
+        #         "bbox": [px - half_w, py - half_h, px + half_w, py + half_h],
+        #         "conf": None,  # This is a prediction
+        #     }
 
         if stub_path is not None:
             with open(stub_path, "wb") as f:
@@ -371,12 +371,18 @@ class Tracker:
         for track_id, player in player_dict.items():
             bbox = player["bbox"]
             conf = player.get("conf", None)
+            team = player.get("team", None)
+            team_color = player.get("team_color", (255, 255, 255))
 
-            frame = self.draw_ellipse(frame, bbox, (255, 0, 0), track_id)
+            frame = self.draw_ellipse(frame, bbox, team_color, track_id)
 
             if conf is not None:
                 x1, _, _, y2 = map(int, bbox)
-                self.draw_conf_text(frame, f"{conf:.2f}", x1, y2, (255, 0, 0))
+                self.draw_conf_text(frame, f"{conf:.2f}", x1, y2, team_color)
+
+            if team is not None:
+                x1, _, _, y2 = map(int, bbox)
+                self.draw_team_text(frame, f"t: {team}", x1, y2, team_color)
 
         # Draw Referees
         for track_id, referee in referee_dict.items():
@@ -398,6 +404,18 @@ class Tracker:
             (x, y + 55),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,  # small font
+            color,
+            1,
+            cv2.LINE_AA,
+        )
+
+    def draw_team_text(self, frame, text, x, y, color):
+        cv2.putText(
+            frame,
+            text,
+            (x, y + 75),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.75,  # small font
             color,
             1,
             cv2.LINE_AA,

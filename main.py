@@ -1,4 +1,5 @@
 from utils import read_video, save_video
+from trackers import Assigner
 from trackers import Tracker
 from ultralytics import YOLO
 from pathlib import Path
@@ -12,7 +13,7 @@ def main():
     # ----------------------------
     # Config
     # ----------------------------
-    VIDEO_PATH = "D:/ITE/year5/graduation project/5th Dataset/Full Match Tactical Cam UCL UEFA Champions League  24-25  2nd Leg - Liverpool vs PSG (11 Mar 2025).mp4"
+    VIDEO_PATH = ""
     MODEL_PATH = "models/yolo26/weights/best.pt"
 
     # BEST for performance
@@ -104,6 +105,10 @@ def main():
     imgsz = 640  # (640 x 640)
     tracker = Tracker(model, TRACKER_NAME, imgsz, device, half)
 
+    # Init Assigner
+    assigner = Assigner()
+    #
+
     # Warmup (CUDA only)
     if device != "cpu":
         dummy = torch.zeros(1, 3, 640, 640).to(device)
@@ -148,6 +153,21 @@ def main():
         start = time.time()
 
         tracks = tracker.track_frame(frame)
+
+        if frame_id < 60:
+            assigner.collect_team_colors(frame, tracks["players"])
+        elif frame_id == 60:
+            assigner.finalize_team_colors()
+        else:
+            for track_id, player in tracks["players"].items():
+                team = assigner.get_player_team_stable(frame, player["bbox"], track_id)
+
+                # Assign each player to it's team
+                tracks["players"][track_id]["team"] = team
+                tracks["players"][track_id]["team_color"] = assigner.hsv_to_bgr(
+                    assigner.team_colors[team]
+                )
+
         annotated = tracker.draw_annotations(frame, tracks)
 
         # boxes, scores, classes, names = tracker.detect_frame(frame)
