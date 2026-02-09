@@ -13,7 +13,7 @@ def main():
     # ----------------------------
     # Config
     # ----------------------------
-    VIDEO_PATH = ""
+    VIDEO_PATH = "videos/test.mp4"
     MODEL_PATH = "models/yolo26/weights/best.pt"
 
     # BEST for performance
@@ -131,7 +131,7 @@ def main():
 
     # # Output video
     # out = cv2.VideoWriter(
-    #     "output_videos/test/test ({i}).mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
+    #     "videos/out.mp4", cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
     # )
 
     frame_id = 0
@@ -201,7 +201,7 @@ def main():
         cv2.imshow("YOLO Detection", frame_resized)
 
         # Save output
-        # out.write(annotated_frame)
+        # out.write(annotated)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
