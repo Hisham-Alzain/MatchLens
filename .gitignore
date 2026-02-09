@@ -1,0 +1,22 @@
+# Datasets
+dataset_old/
+dataset_yolo8/
+Kaggel Datasets/
+RoboFlow Datasets/
+Ghassan Dataset/
+dataset_yolo11/
+# Training outputs
+runs/
+
+# YOLO experiment folders
+v5/
+v8/
+v10/
+v11/
+
+# Model Exports
+*.onnx
+*.engine
+
+# cahce
+*.pyc
